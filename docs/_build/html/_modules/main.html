@@ -1,0 +1,364 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="ru" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>main &mdash; документация TaskBot 1.0</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=9ca2116e"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/translations.js?v=cd1d70c9"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Алфавитный указатель" href="../genindex.html" />
+    <link rel="search" title="Поиск" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            TaskBot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Поиск в документации" aria-label="Поиск в документации" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Меню навигации">
+              <p class="caption" role="heading"><span class="caption-text">Содержание:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">Модули TaskBot</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../db.html">Модуль db</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../models.html">Модуль models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../scheduler.html">Модуль scheduler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../utils.html">Модуль utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../main.html">Модуль main</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Меню навигации для мобильных устройств" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">TaskBot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Навигация по страницам">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Код модуля</a></li>
+      <li class="breadcrumb-item active">main</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Исходный код main</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dotenv</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dotenv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">telegram</span><span class="w"> </span><span class="kn">import</span> <span class="n">Update</span><span class="p">,</span> <span class="n">InlineKeyboardButton</span><span class="p">,</span> <span class="n">InlineKeyboardMarkup</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">telegram.ext</span><span class="w"> </span><span class="kn">import</span> <span class="n">CallbackQueryHandler</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">telegram.ext</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Application</span><span class="p">,</span> <span class="n">CommandHandler</span><span class="p">,</span> <span class="n">MessageHandler</span><span class="p">,</span>
+    <span class="n">ConversationHandler</span><span class="p">,</span> <span class="n">filters</span><span class="p">,</span> <span class="n">ContextTypes</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">db</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_db_and_tables</span><span class="p">,</span> <span class="n">get_session</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">models</span><span class="w"> </span><span class="kn">import</span> <span class="n">User</span><span class="p">,</span> <span class="n">Task</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">encrypt_password</span><span class="p">,</span> <span class="n">check_password</span><span class="p">,</span> <span class="n">format_task_list</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scheduler</span><span class="w"> </span><span class="kn">import</span> <span class="n">start_scheduler</span><span class="p">,</span> <span class="n">schedule_task_notifications</span>
+
+<span class="n">MAIN_MENU</span> <span class="o">=</span> <span class="mi">99</span>
+<span class="n">load_dotenv</span><span class="p">()</span>
+<span class="n">TOKEN</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;TELEGRAM_TOKEN&quot;</span><span class="p">)</span>
+
+<span class="n">REGISTER</span><span class="p">,</span> <span class="n">LOGIN</span><span class="p">,</span> <span class="n">PASSWORD_REGISTER</span><span class="p">,</span> <span class="n">PASSWORD_LOGIN</span><span class="p">,</span> <span class="n">NEW_TASK</span><span class="p">,</span> <span class="n">TASK_TITLE</span><span class="p">,</span> <span class="n">TASK_DESC</span><span class="p">,</span> <span class="n">TASK_DEADLINE</span><span class="p">,</span> <span class="n">EDIT_TASK</span><span class="p">,</span> <span class="n">DELETE_TASK</span><span class="p">,</span> <span class="n">SET_PRIORITY</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">11</span><span class="p">)</span>
+
+<span class="n">users_logged_in</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="start">
+<a class="viewcode-back" href="../main.html#main.start">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="n">keyboard</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">[</span><span class="n">InlineKeyboardButton</span><span class="p">(</span><span class="s2">&quot;Регистрация&quot;</span><span class="p">,</span> <span class="n">callback_data</span><span class="o">=</span><span class="s1">&#39;register&#39;</span><span class="p">)],</span>
+        <span class="p">[</span><span class="n">InlineKeyboardButton</span><span class="p">(</span><span class="s2">&quot;Вход&quot;</span><span class="p">,</span> <span class="n">callback_data</span><span class="o">=</span><span class="s1">&#39;login&#39;</span><span class="p">)]</span>
+    <span class="p">]</span>
+    <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="s2">&quot;Привет, я TaskBot!&quot;</span><span class="p">,</span> <span class="n">reply_markup</span><span class="o">=</span><span class="n">InlineKeyboardMarkup</span><span class="p">(</span><span class="n">keyboard</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="button_handler">
+<a class="viewcode-back" href="../main.html#main.button_handler">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">button_handler</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">update</span><span class="o">.</span><span class="n">callback_query</span>
+    <span class="k">await</span> <span class="n">query</span><span class="o">.</span><span class="n">answer</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">query</span><span class="o">.</span><span class="n">data</span> <span class="o">==</span> <span class="s1">&#39;register&#39;</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">query</span><span class="o">.</span><span class="n">edit_message_text</span><span class="p">(</span><span class="s2">&quot;Введите юзернейм:&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">REGISTER</span>
+    <span class="k">elif</span> <span class="n">query</span><span class="o">.</span><span class="n">data</span> <span class="o">==</span> <span class="s1">&#39;login&#39;</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">query</span><span class="o">.</span><span class="n">edit_message_text</span><span class="p">(</span><span class="s2">&quot;Введите юзернейм:&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">LOGIN</span></div>
+
+
+<div class="viewcode-block" id="register">
+<a class="viewcode-back" href="../main.html#main.register">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">register</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">user_data</span><span class="p">[</span><span class="s1">&#39;username&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">text</span>
+    <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="s2">&quot;Введите пароль:&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">PASSWORD_REGISTER</span></div>
+
+
+<div class="viewcode-block" id="password_register">
+<a class="viewcode-back" href="../main.html#main.password_register">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">password_register</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="n">get_session</span><span class="p">()</span>
+    <span class="n">username</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">user_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;username&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">User</span><span class="p">)</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">():</span>
+        <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="s2">&quot;Такой юзернейм уже занят! Введите другой:&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">REGISTER</span>
+
+    <span class="n">password</span> <span class="o">=</span> <span class="n">encrypt_password</span><span class="p">(</span><span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="n">password</span><span class="p">)</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="n">users_logged_in</span><span class="p">[</span><span class="n">update</span><span class="o">.</span><span class="n">effective_user</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">user</span><span class="o">.</span><span class="n">id</span>
+    <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="s2">&quot;Успешная регистрация!&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="k">await</span> <span class="n">show_main_menu</span><span class="p">(</span><span class="n">update</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="login">
+<a class="viewcode-back" href="../main.html#main.login">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">login</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">user_data</span><span class="p">[</span><span class="s1">&#39;username&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">text</span>
+    <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="s2">&quot;Введите пароль:&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">PASSWORD_LOGIN</span></div>
+
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+<div class="viewcode-block" id="password_login">
+<a class="viewcode-back" href="../main.html#main.password_login">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">password_login</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Password login started&quot;</span><span class="p">)</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="n">get_session</span><span class="p">()</span>
+    <span class="n">username</span> <span class="o">=</span> <span class="n">context</span><span class="o">.</span><span class="n">user_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;username&#39;</span><span class="p">)</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">User</span><span class="p">)</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;User </span><span class="si">{</span><span class="n">username</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="s2">&quot;Пользователь не найден.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">LOGIN</span>
+
+    <span class="k">if</span> <span class="n">check_password</span><span class="p">(</span><span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">text</span><span class="p">,</span> <span class="n">user</span><span class="o">.</span><span class="n">password</span><span class="p">):</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;User </span><span class="si">{</span><span class="n">username</span><span class="si">}</span><span class="s2"> successfully logged in&quot;</span><span class="p">)</span>
+        <span class="n">users_logged_in</span><span class="p">[</span><span class="n">update</span><span class="o">.</span><span class="n">effective_user</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">user</span><span class="o">.</span><span class="n">id</span>
+        <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="s2">&quot;Успешный вход!&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="n">show_main_menu</span><span class="p">(</span><span class="n">update</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Incorrect password for user </span><span class="si">{</span><span class="n">username</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="s2">&quot;Неверный пароль. Попробуйте ещё раз:&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">PASSWORD_LOGIN</span></div>
+
+
+<div class="viewcode-block" id="new_task">
+<a class="viewcode-back" href="../main.html#main.new_task">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">new_task</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="s2">&quot;Введите название задачи:&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">TASK_TITLE</span></div>
+
+
+<div class="viewcode-block" id="task_title">
+<a class="viewcode-back" href="../main.html#main.task_title">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">task_title</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">user_data</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">text</span>
+    <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="s2">&quot;Введите описание задачи:&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">TASK_DESC</span></div>
+
+
+<div class="viewcode-block" id="task_desc">
+<a class="viewcode-back" href="../main.html#main.task_desc">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">task_desc</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">user_data</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">text</span>
+    <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="s2">&quot;Введите дедлайн в формате: (YYYY-MM-DD HH:MM):&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">TASK_DEADLINE</span></div>
+
+
+<div class="viewcode-block" id="task_deadline">
+<a class="viewcode-back" href="../main.html#main.task_deadline">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">task_deadline</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">deadline</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">text</span><span class="p">,</span> <span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="s2">&quot;Неправильный формат! Попробуйте снова.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TASK_DEADLINE</span>
+
+    <span class="n">user_id</span> <span class="o">=</span> <span class="n">users_logged_in</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">update</span><span class="o">.</span><span class="n">effective_user</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="n">get_session</span><span class="p">()</span>
+    <span class="n">task</span> <span class="o">=</span> <span class="n">Task</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">user_data</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">],</span> <span class="n">description</span><span class="o">=</span><span class="n">context</span><span class="o">.</span><span class="n">user_data</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">],</span>
+                <span class="n">deadline</span><span class="o">=</span><span class="n">deadline</span><span class="p">,</span> <span class="n">user_id</span><span class="o">=</span><span class="n">user_id</span><span class="p">)</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+    <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="n">schedule_task_notifications</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="s2">&quot;Задача создана!&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ConversationHandler</span><span class="o">.</span><span class="n">END</span></div>
+
+
+<div class="viewcode-block" id="view_tasks">
+<a class="viewcode-back" href="../main.html#main.view_tasks">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">view_tasks</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="n">user_id</span> <span class="o">=</span> <span class="n">users_logged_in</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">update</span><span class="o">.</span><span class="n">effective_user</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="n">session</span> <span class="o">=</span> <span class="n">get_session</span><span class="p">()</span>
+    <span class="n">tasks</span> <span class="o">=</span> <span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">Task</span><span class="p">)</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="n">user_id</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+    <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="n">format_task_list</span><span class="p">(</span><span class="n">tasks</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="show_main_menu">
+<a class="viewcode-back" href="../main.html#main.show_main_menu">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">show_main_menu</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="n">keyboard</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">[</span><span class="n">InlineKeyboardButton</span><span class="p">(</span><span class="s2">&quot;Создать задачу&quot;</span><span class="p">,</span> <span class="n">callback_data</span><span class="o">=</span><span class="s1">&#39;new_task&#39;</span><span class="p">)],</span>
+        <span class="p">[</span><span class="n">InlineKeyboardButton</span><span class="p">(</span><span class="s2">&quot;Посмотреть задачи&quot;</span><span class="p">,</span> <span class="n">callback_data</span><span class="o">=</span><span class="s1">&#39;view_tasks&#39;</span><span class="p">)]</span>
+    <span class="p">]</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">update</span><span class="o">.</span><span class="n">callback_query</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">callback_query</span><span class="o">.</span><span class="n">edit_message_text</span><span class="p">(</span>
+                <span class="s2">&quot;Выберите действие:&quot;</span><span class="p">,</span>
+                <span class="n">reply_markup</span><span class="o">=</span><span class="n">InlineKeyboardMarkup</span><span class="p">(</span><span class="n">keyboard</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span>
+                <span class="s2">&quot;Выберите действие:&quot;</span><span class="p">,</span>
+                <span class="n">reply_markup</span><span class="o">=</span><span class="n">InlineKeyboardMarkup</span><span class="p">(</span><span class="n">keyboard</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️ Ни message, ни callback_query не найдены в update!&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ошибка в show_main_menu: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">MAIN_MENU</span></div>
+
+
+<div class="viewcode-block" id="menu_handler">
+<a class="viewcode-back" href="../main.html#main.menu_handler">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">menu_handler</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">update</span><span class="o">.</span><span class="n">callback_query</span>
+    <span class="k">await</span> <span class="n">query</span><span class="o">.</span><span class="n">answer</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">query</span><span class="o">.</span><span class="n">data</span> <span class="o">==</span> <span class="s1">&#39;new_task&#39;</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">query</span><span class="o">.</span><span class="n">edit_message_text</span><span class="p">(</span><span class="s2">&quot;Enter task title:&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TASK_TITLE</span>
+    <span class="k">elif</span> <span class="n">query</span><span class="o">.</span><span class="n">data</span> <span class="o">==</span> <span class="s1">&#39;view_tasks&#39;</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">view_tasks</span><span class="p">(</span><span class="n">update</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
+        <span class="k">await</span> <span class="n">query</span><span class="o">.</span><span class="n">edit_message_text</span><span class="p">(</span><span class="s2">&quot;Выберите следующее действие:&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="k">await</span> <span class="n">show_main_menu</span><span class="p">(</span><span class="n">update</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="handle_main_menu_text">
+<a class="viewcode-back" href="../main.html#main.handle_main_menu_text">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_main_menu_text</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="k">await</span> <span class="n">update</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">reply_text</span><span class="p">(</span><span class="s2">&quot;Пожалуйста, выберите действие, используя кнопки ниже ⬇️&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">MAIN_MENU</span></div>
+
+
+<div class="viewcode-block" id="restart">
+<a class="viewcode-back" href="../main.html#main.restart">[документация]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">restart</span><span class="p">(</span><span class="n">update</span><span class="p">:</span> <span class="n">Update</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">ContextTypes</span><span class="o">.</span><span class="n">DEFAULT_TYPE</span><span class="p">):</span>
+    <span class="n">users_logged_in</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">update</span><span class="o">.</span><span class="n">effective_user</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">user_data</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+    <span class="k">await</span> <span class="n">start</span><span class="p">(</span><span class="n">update</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">MAIN_MENU</span></div>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="n">create_db_and_tables</span><span class="p">()</span>
+    <span class="n">app</span> <span class="o">=</span> <span class="n">Application</span><span class="o">.</span><span class="n">builder</span><span class="p">()</span><span class="o">.</span><span class="n">token</span><span class="p">(</span><span class="n">TOKEN</span><span class="p">)</span><span class="o">.</span><span class="n">build</span><span class="p">()</span>
+
+    <span class="n">conv_handler</span> <span class="o">=</span> <span class="n">ConversationHandler</span><span class="p">(</span>
+        <span class="n">entry_points</span><span class="o">=</span><span class="p">[</span><span class="n">CommandHandler</span><span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="n">start</span><span class="p">),</span> <span class="n">CallbackQueryHandler</span><span class="p">(</span><span class="n">button_handler</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="s1">&#39;^(register|login)$&#39;</span><span class="p">)],</span>
+        <span class="n">states</span><span class="o">=</span><span class="p">{</span>
+            <span class="n">REGISTER</span><span class="p">:</span> <span class="p">[</span><span class="n">MessageHandler</span><span class="p">(</span><span class="n">filters</span><span class="o">.</span><span class="n">TEXT</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">filters</span><span class="o">.</span><span class="n">COMMAND</span><span class="p">,</span> <span class="n">register</span><span class="p">)],</span>
+            <span class="n">LOGIN</span><span class="p">:</span> <span class="p">[</span><span class="n">MessageHandler</span><span class="p">(</span><span class="n">filters</span><span class="o">.</span><span class="n">TEXT</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">filters</span><span class="o">.</span><span class="n">COMMAND</span><span class="p">,</span> <span class="n">login</span><span class="p">)],</span>
+            <span class="n">PASSWORD_REGISTER</span><span class="p">:</span> <span class="p">[</span><span class="n">MessageHandler</span><span class="p">(</span><span class="n">filters</span><span class="o">.</span><span class="n">TEXT</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">filters</span><span class="o">.</span><span class="n">COMMAND</span><span class="p">,</span> <span class="n">password_register</span><span class="p">)],</span>
+            <span class="n">PASSWORD_LOGIN</span><span class="p">:</span> <span class="p">[</span><span class="n">MessageHandler</span><span class="p">(</span><span class="n">filters</span><span class="o">.</span><span class="n">TEXT</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">filters</span><span class="o">.</span><span class="n">COMMAND</span><span class="p">,</span> <span class="n">password_login</span><span class="p">)],</span>
+            <span class="n">TASK_TITLE</span><span class="p">:</span> <span class="p">[</span><span class="n">MessageHandler</span><span class="p">(</span><span class="n">filters</span><span class="o">.</span><span class="n">TEXT</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">filters</span><span class="o">.</span><span class="n">COMMAND</span><span class="p">,</span> <span class="n">task_title</span><span class="p">)],</span>
+            <span class="n">TASK_DESC</span><span class="p">:</span> <span class="p">[</span><span class="n">MessageHandler</span><span class="p">(</span><span class="n">filters</span><span class="o">.</span><span class="n">TEXT</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">filters</span><span class="o">.</span><span class="n">COMMAND</span><span class="p">,</span> <span class="n">task_desc</span><span class="p">)],</span>
+            <span class="n">TASK_DEADLINE</span><span class="p">:</span> <span class="p">[</span><span class="n">MessageHandler</span><span class="p">(</span><span class="n">filters</span><span class="o">.</span><span class="n">TEXT</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">filters</span><span class="o">.</span><span class="n">COMMAND</span><span class="p">,</span> <span class="n">task_deadline</span><span class="p">)],</span>
+            <span class="n">MAIN_MENU</span><span class="p">:</span> <span class="p">[</span>
+                <span class="n">CallbackQueryHandler</span><span class="p">(</span><span class="n">menu_handler</span><span class="p">,</span> <span class="n">pattern</span><span class="o">=</span><span class="s1">&#39;^(new_task|view_tasks)$&#39;</span><span class="p">),</span>
+                <span class="n">MessageHandler</span><span class="p">(</span><span class="n">filters</span><span class="o">.</span><span class="n">TEXT</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">filters</span><span class="o">.</span><span class="n">COMMAND</span><span class="p">,</span> <span class="n">handle_main_menu_text</span><span class="p">)</span>
+            <span class="p">],</span>
+        <span class="p">},</span>
+        <span class="n">fallbacks</span><span class="o">=</span><span class="p">[]</span>
+    <span class="p">)</span>
+
+    <span class="n">app</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="n">conv_handler</span><span class="p">)</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="n">CommandHandler</span><span class="p">(</span><span class="s1">&#39;restart&#39;</span><span class="p">,</span> <span class="n">restart</span><span class="p">))</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="n">CommandHandler</span><span class="p">(</span><span class="s1">&#39;newtask&#39;</span><span class="p">,</span> <span class="n">new_task</span><span class="p">))</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">add_handler</span><span class="p">(</span><span class="n">CommandHandler</span><span class="p">(</span><span class="s1">&#39;tasks&#39;</span><span class="p">,</span> <span class="n">view_tasks</span><span class="p">))</span>
+
+    <span class="n">start_scheduler</span><span class="p">()</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">RuntimeError</span><span class="p">:</span>
+        <span class="n">asyncio</span><span class="o">.</span><span class="n">set_event_loop</span><span class="p">(</span><span class="n">asyncio</span><span class="o">.</span><span class="n">new_event_loop</span><span class="p">())</span>
+
+    <span class="n">app</span><span class="o">.</span><span class="n">run_polling</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Авторские права 2025, Загуменов У.И. Косарева Е.А. Синюхина А.М. Смирнова Е.А.. </p>
+  </div>
+
+  Собрано при помощи <a href="https://www.sphinx-doc.org/">Sphinx</a> с использованием
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">темы,</a>
+    предоставленной <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
